@@ -1,0 +1,136 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: eventbooking-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: event_booking
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: eventbooking-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    # Used from Week 3 onward for seat-locking (SETNX) and event/seat caching
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: eventbooking-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "2181:2181"
+    # Used from Week 4 onward, only needed once Kafka is wired in
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: eventbooking-kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      # Other CONTAINERS (like backend) reach Kafka via the "kafka" hostname,
+      # resolvable through Docker Compose's internal DNS - that's what
+      # PLAINTEXT (port 29092) advertises. Anything connecting from OUTSIDE
+      # Docker (e.g. a Kafka UI tool run directly on your machine) uses
+      # PLAINTEXT_HOST via the published port 9092 on localhost instead.
+      # Advertising only "localhost:9092" (the old, broken config) told every
+      # container-side client to reconnect to itself after the first
+      # handshake, since "localhost" inside a container's network namespace
+      # means that container, not the Kafka container.
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
+    # Used from Week 4 onward for async booking-confirmation events
+
+  backend:
+    build:
+      context: ./backend
+    container_name: eventbooking-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: event_booking
+      DB_USER: root
+      DB_PASSWORD: root
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BROKER: kafka:29092
+      JWT_SECRET: ${JWT_SECRET:-change_this_to_a_long_random_secret_in_prod}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      TICKET_OUTPUT_DIR: /app/generated-tickets
+      POSTER_UPLOAD_DIR: /app/uploads/posters
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploads-data:/app/uploads
+      - tickets-data:/app/generated-tickets
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 45s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/api}
+        VITE_WS_URL: ${VITE_WS_URL:-http://localhost:8080/ws}
+        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    container_name: eventbooking-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "5173:80"
+
+volumes:
+  mysql-data:
+  uploads-data:
+  tickets-data:
+
+
+
+# docker exec -it 7a52081600f1858796b5978760aa705610884243d6cac3d17e4475bcbf740a6e mysql -u root -p
