@@ -1,0 +1,122 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: event-booking-platform
+
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:event_booking}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  # Kafka - actively used from Week 4 for async booking confirmation.
+  # If the broker isn't reachable, the app still starts (Spring Kafka's
+  # listener container retries connecting in the background) - booking
+  # confirmations just won't be processed until it's up.
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKER:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: event-booking-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      # NOTE: trusted-packages is intentionally NOT set here. KafkaConsumerConfig
+      # builds its own JsonDeserializer instance and calls addTrustedPackages()
+      # on it directly - configuring the same thing both here (via properties)
+      # and there (via setter) makes JsonDeserializer throw
+      # "must be configured with property setters, or via configuration
+      # properties; not both" the moment a listener container tries to start.
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+    # For Gmail specifically: MAIL_PASSWORD must be a 16-character "App
+    # Password" (Google Account -> Security -> 2-Step Verification -> App
+    # Passwords), NOT the actual account password - Gmail rejects SMTP auth
+    # with a real account password outright once 2FA is enabled, which it
+    # needs to be to even generate an App Password in the first place.
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:CHANGE_THIS_TO_A_LONG_RANDOM_SECRET_IN_PROD_ENV_VARS_ONLY}
+    expiration-ms: 86400000   # 24 hours
+  cors:
+    allowed-origins: ${FRONTEND_URL:http://localhost:5173}
+  razorpay:
+    key-id: ${RAZORPAY_KEY_ID:}
+    key-secret: ${RAZORPAY_KEY_SECRET:}
+    # Get free test-mode keys from https://dashboard.razorpay.com/app/keys
+    # (toggle "Test Mode" in the dashboard) - no real money moves in test mode.
+    webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
+    # Set this when configuring the webhook URL in the Razorpay dashboard
+    # (Settings > Webhooks). Deliberately a DIFFERENT secret from key-secret
+    # above - Razorpay generates it separately, specifically for signing
+    # webhook payloads.
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+    # Only the client ID is needed server-side (used as the "audience" to
+    # verify Google ID tokens against). The client SECRET is never sent to
+    # or used by this backend at all - Google Identity Services' token-based
+    # sign-in flow (what the frontend uses) doesn't need it, unlike the
+    # older server-side OAuth2 redirect flow. Keeping it out of application.yml
+    # entirely means there's nothing secret-shaped to accidentally leak here.
+  booking:
+    payment-window-minutes: 10   # how long a PENDING booking waits before the cleanup job marks it EXPIRED
+  tickets:
+    output-dir: ${TICKET_OUTPUT_DIR:./generated-tickets}   # local disk for this project; swap for S3 in production (see AWS notes in README)
+  uploads:
+    poster-dir: ${POSTER_UPLOAD_DIR:./uploads/posters}   # local disk for this project too - served via WebConfig's /uploads/** static mapping
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  health:
+    # The app is deliberately built to keep working even if Kafka is
+    # temporarily unreachable (see BookingEventProducer / PendingBookingCleanupJob
+    # comments - a booking's success was never allowed to depend on Kafka).
+    # Actuator's default Kafka health indicator does a describeCluster() call
+    # and drags the WHOLE /actuator/health status to DOWN if that fails -
+    # which caused Docker Compose's backend healthcheck to fail during the
+    # Kafka+Zookeeper startup window (that pair genuinely takes longer to
+    # become ready than MySQL/Redis do). Disabling it here keeps this
+    # endpoint reporting "is the app itself actually running", matching
+    # what the healthcheck is meant to answer.
+    kafka:
+      enabled: false
