@@ -1,0 +1,13 @@
+<svg width="640" height="180" viewBox="0 0 640 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="StubLine logo">
+  <title>StubLine</title>
+  <g transform="translate(20,20)">
+    <rect x="0" y="0" width="140" height="140" rx="28" fill="#12121A"/>
+    <rect x="22" y="42" width="96" height="56" rx="8" fill="#E8A33D"/>
+    <circle cx="22" cy="70" r="11" fill="#12121A"/>
+    <circle cx="118" cy="70" r="11" fill="#12121A"/>
+    <line x1="58" y1="48" x2="58" y2="92" stroke="#12121A" stroke-width="2.5" stroke-dasharray="4 4" stroke-linecap="round"/>
+    <circle cx="40" cy="70" r="4" fill="#12121A"/>
+  </g>
+  <text x="188" y="103" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="700" font-size="70" letter-spacing="1" fill="#E8A33D">StubLine</text>
+  <text x="190" y="140" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="16" letter-spacing="5" fill="#8B8A99">LIVE EVENT TICKETING</text>
+</svg>
