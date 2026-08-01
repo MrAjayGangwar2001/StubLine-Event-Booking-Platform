@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+}
+
+@layer components {
+  /* Perforated divider - the ticket-stub signature element used in the
+     booking summary panel and confirmation cards. */
+  .stub-perforation {
+    @apply relative;
+  }
+  .stub-perforation::before {
+    content: '';
+    @apply absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-ink;
+  }
+  .stub-perforation::after {
+    content: '';
+    @apply absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-ink;
+  }
+
+  .btn-primary {
+    @apply bg-gold text-ink font-semibold px-5 py-2.5 rounded-md hover:bg-gold-soft
+           transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gold;
+  }
+
+  .btn-secondary {
+    @apply bg-transparent border border-ink-line text-paper font-medium px-5 py-2.5 rounded-md
+           hover:border-gold hover:text-gold transition-colors;
+  }
+
+  .input-field {
+    @apply bg-ink-soft border border-ink-line rounded-md px-4 py-2.5 text-paper placeholder-paper-muted
+           focus:outline-none focus:border-gold transition-colors w-full;
+  }
+
+  .card {
+    @apply bg-ink-soft border border-ink-line rounded-lg;
+  }
+}
