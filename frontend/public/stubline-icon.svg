@@ -1,0 +1,9 @@
+<svg width="140" height="140" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="StubLine icon">
+  <title>StubLine icon</title>
+  <rect x="0" y="0" width="140" height="140" rx="28" fill="#12121A"/>
+  <rect x="22" y="42" width="96" height="56" rx="8" fill="#E8A33D"/>
+  <circle cx="22" cy="70" r="11" fill="#12121A"/>
+  <circle cx="118" cy="70" r="11" fill="#12121A"/>
+  <line x1="58" y1="48" x2="58" y2="92" stroke="#12121A" stroke-width="2.5" stroke-dasharray="4 4" stroke-linecap="round"/>
+  <circle cx="40" cy="70" r="4" fill="#12121A"/>
+</svg>
