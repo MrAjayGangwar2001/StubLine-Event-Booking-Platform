@@ -8,28 +8,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
 
-/**
- * Seeds a default SUPER_ADMIN account on local startup so there's always a
- * way in without manually flipping a role in the DB. Self-registration
- * (/api/auth/register) always creates USER accounts - this is intentional,
- * see AuthService. Only SUPER_ADMIN can promote/demote other users
- * (AdminUserController) - a regular ADMIN cannot create more admins.
- *
- * If this seeder already ran against your database BEFORE this class
- * seeded SUPER_ADMIN instead of ADMIN, the existing row won't be touched
- * (see the existsByEmail early-return below) - run this once by hand:
- *   UPDATE users SET role = 'SUPER_ADMIN' WHERE email = 'admin@eventbooking.com';
- *
- * Change ADMIN_PASSWORD before deploying anywhere beyond localhost.
- */
+
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class DataSeeder implements CommandLineRunner {
 
-    private static final String ADMIN_EMAIL = "admin@eventbooking.com";
-    private static final String ADMIN_PASSWORD = "Admin@123";
+    @Value("${app.admin.ADMIN_EMAIL}")
+    private String ADMIN_EMAIL;
+
+    @Value("${app.admin.ADMIN_PASSWORD}")
+    private String ADMIN_PASSWORD;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
