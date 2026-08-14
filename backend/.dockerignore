@@ -1,0 +1,8 @@
+target/
+*.class
+.git/
+.mvn/
+generated-tickets/
+*.log
+.idea/
+*.iml
